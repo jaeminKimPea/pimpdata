@@ -1,6 +1,6 @@
 spring:
   datasource:
-    url: jdbc:mysql://awseb-e-y9k2hibgfw-stack-awsebrdsdatabase-ufhaflspy7u7.cb6wsq26at2o.ap-southeast-2.rds.amazonaws.com:3306/ebdb?useSSL=false&serverTimezone=Australia/Sydney&characterEncoding=UTF-8&tcpKeepAlive=true&socketTimeout=60000
+    url: jdbc:mysql://pimpredata.cb6wsq26at2o.ap-southeast-2.rds.amazonaws.com:3306/project_db?useSSL=false&serverTimezone=Australia/Sydney&characterEncoding=UTF-8&tcpKeepAlive=true&socketTimeout=60000
     username: jemona613
     password: 73U!J3%nEVN67-3
     driver-class-name: com.mysql.cj.jdbc.Driver
@@ -19,7 +19,3 @@ spring:
     properties:
       hibernate:
         format_sql: true
-
-server:
-  address: 0.0.0.0
-  port: 8080
