@@ -19,3 +19,17 @@ spring:
     properties:
       hibernate:
         format_sql: true
+
+server:
+  port: ${SERVER_PORT:5000}
+
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "health,info"
+  endpoint:
+    health:
+      probes:
+        enabled: true

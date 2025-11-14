@@ -29,11 +29,21 @@ public class ScheduleService {
                 .collect(Collectors.toList());
     }
 
+
+
     public ScheduleResponseDto findById(Long id) {
         OwnSchedule schedule = scheduleRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("일정을 찾을 수 없습니다. id=" + id));
         return toResponse(schedule);
     }
+
+
+    public ScheduleResponseDto findByIdAll(Long id) {
+        OwnSchedule schedule = scheduleRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("일정을 찾을 수 없습니다. id=" + id));
+        return toResponse(schedule);
+    }
+
 
     public ScheduleResponseDto create(ScheduleCreateRequestDto req) {
         User user = userRepository.findById(req.getUserId())
