@@ -11,7 +11,22 @@ spring:
       max-lifetime: 1800000
       keepalive-time: 300000
       connection-timeout: 30000
-
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: 772475650410-11h1ldmmh3lntbsrodpa5ffmps70tl43.apps.googleusercontent.com
+            client-secret: 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
+            scope:
+              - openid
+              - profile
+              - email
+              - https://www.googleapis.com/auth/calendar
+        provider:
+          google:
+            issuer-uri: https://accounts.google.com
+  
   jpa:
     hibernate:
       ddl-auto: update
@@ -19,6 +34,7 @@ spring:
     properties:
       hibernate:
         format_sql: true
+
 
 server:
   port: ${SERVER_PORT:5000}
