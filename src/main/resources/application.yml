@@ -1,10 +1,10 @@
 spring:
-  config:
-    import: optional:file:./src/main/resources/application-secret.env
+  profiles:
+    include: secret
   datasource:
-    url: ${DB_URI}
-    username: ${DB_USER}
-    password: ${DB_PASSWORD}
+    url: jdbc:mysql://pimpredata.cb6wsq26at2o.ap-southeast-2.rds.amazonaws.com:3306/project_db?useSSL=false&serverTimezone=Australia/Sydney&characterEncoding=UTF-8&tcpKeepAlive=true&socketTimeout=60000
+    username: jemona613
+    password: 73U!J3%nEVN67-3
     driver-class-name: com.mysql.cj.jdbc.Driver
     hikari:
       maximum-pool-size: 10
@@ -18,8 +18,8 @@ spring:
       client:
         registration:
           google:
-            client-id: ${GOOGLE_CLIENT_ID}
-            client-secret: ${GOOGLE_CLIENT_SECRET}
+            client-id: 772475650410-11h1ldmmh3lntbsrodpa5ffmps70tl43.apps.googleusercontent.com
+            client-secret: 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
             scope:
               - openid
               - profile

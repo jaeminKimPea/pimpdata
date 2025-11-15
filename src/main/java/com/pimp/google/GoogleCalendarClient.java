@@ -3,7 +3,6 @@ package com.pimp.google;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pimp.common.domain.issue.domain.model.Issue;
-import com.pimp.common.domain.own_schedule.domain.model.GoogleDeleteResult;
 import com.pimp.common.domain.own_schedule.domain.model.OwnSchedule;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.*;
@@ -12,7 +11,6 @@ import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
 import java.io.IOException;
-import java.time.ZoneId;
 
 @Component
 @RequiredArgsConstructor

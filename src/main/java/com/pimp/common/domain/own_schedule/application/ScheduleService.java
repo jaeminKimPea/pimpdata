@@ -2,7 +2,7 @@ package com.pimp.common.domain.own_schedule.application;
 
 import com.pimp.common.domain.issue.domain.model.Issue;
 import com.pimp.common.domain.issue.domain.repository.IssueRepository;
-import com.pimp.common.domain.own_schedule.domain.model.GoogleDeleteResult;
+import com.pimp.google.GoogleDeleteResult;
 import com.pimp.common.domain.own_schedule.domain.model.OwnSchedule;
 import com.pimp.common.domain.own_schedule.domain.repository.OwnScheduleRepository;
 import com.pimp.common.domain.own_schedule.dto.ScheduleRequestDto;
@@ -13,13 +13,12 @@ import com.pimp.google.GoogleCalendarClient;
 import com.pimp.common.domain.own_schedule.dto.ScheduleDeleteResponseDto;
 import com.pimp.google.GoogleUpdateResult;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClient;
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClientService;
-import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -31,7 +30,7 @@ public class ScheduleService {
     private final OwnScheduleRepository scheduleRepository;
     private final UserRepository userRepository;
     private final IssueRepository issueRepository;
-    private final OAuth2AuthorizedClientService clientService; // 여기서 주입
+    private final OAuth2AuthorizedClientService clientService; // 필요하다면 유지
     private final GoogleCalendarClient googleCalendarClient;
 
     public List<ScheduleResponseDto> findAll() {
@@ -40,30 +39,34 @@ public class ScheduleService {
                 .collect(Collectors.toList());
     }
 
-
-
     public ScheduleResponseDto findById(Long id) {
         OwnSchedule schedule = scheduleRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("일정을 찾을 수 없습니다. id=" + id));
         return toResponse(schedule);
     }
 
-
-    public ScheduleResponseDto findByIdAll(Long id) {
-        OwnSchedule schedule = scheduleRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("일정을 찾을 수 없습니다. id=" + id));
-        return toResponse(schedule);
+    public List<ScheduleResponseDto> findByUser(User user) {
+        return scheduleRepository.findByUser_id(user).stream()
+                .map(this::toResponse)
+                .collect(Collectors.toList());
     }
 
+    public List<ScheduleResponseDto> findByUserPeriod(User user, LocalDateTime start, LocalDateTime end) {
+        return scheduleRepository.findByUser_idAndScheduleEndAfterAndScheduleStartBefore(user, start, end)
+                .stream()
+                .map(this::toResponse)
+                .collect(Collectors.toList());
+    }
 
-
+    /**
+     * JWT에서 꺼낸 userEmail을 기준으로 처리하는 버전
+     */
     public OwnSchedule createWithGoogleSync(ScheduleRequestDto dto,
-                                            OAuth2User principal) {
+                                            String userEmail) {
 
-        // 1. 구글 이메일로 User 찾기 (interlockEmail 기준)
-        String googleEmail = (String) principal.getAttributes().get("email");
-        User user = userRepository.findByInterlockEmail(googleEmail)
-                .orElseThrow(() -> new IllegalArgumentException("해당 구글 계정이 연동된 사용자 없음"));
+        // 1. JWT에서 가져온 이메일로 User 찾기 (interlockEmail 기준)
+        User user = userRepository.findByInterlockEmail(userEmail)
+                .orElseThrow(() -> new IllegalArgumentException("해당 구글 계정이 연동된 사용자 없음: " + userEmail));
 
         // 2. issueId → Issue 엔티티 조회 (nullable 허용)
         Issue issue = null;
@@ -72,29 +75,31 @@ public class ScheduleService {
                     .orElseThrow(() -> new IllegalArgumentException("해당 이슈를 찾을 수 없습니다. id=" + dto.getIssueId()));
         }
 
-        // 2. 스케줄 엔티티 생성 (issueId 포함)
+        // 3. 스케줄 엔티티 생성
         OwnSchedule schedule = OwnSchedule.builder()
                 .user(user)
                 .schedulePurpose(dto.getSchedulePurpose())
                 .scheduleContent(dto.getScheduleContent())
                 .scheduleStart(dto.getScheduleStart())
                 .scheduleEnd(dto.getScheduleEnd())
-                .issue(issue)         // ★ 스케줄에 이슈 아이디 저장
+                .issue(issue)
                 .googleLinked(false)
                 .build();
 
         scheduleRepository.save(schedule);
 
-        // 3. 구글 연동을 안 한다면 여기서 끝
+        // 4. 구글 연동을 안 한다면 여기서 끝
         if (!dto.getSyncWithGoogle()) {
             return schedule;
         }
 
-        // 4. clientService 로 현재 로그인한 사용자의 AuthorizedClient 가져오기
+        // 5. OAuth2AuthorizedClientService를 사용해 "google" 클라이언트 가져오기
+        //    principalName 자리에 JWT의 subject(userEmail)를 사용한다고 가정
         OAuth2AuthorizedClient client =
-                clientService.loadAuthorizedClient("google", principal.getName());
+                clientService.loadAuthorizedClient("google", userEmail);
+
         if (client == null || client.getAccessToken() == null) {
-            // 구글 로그인/토큰 없으면 로컬만 저장 (연동 실패로 처리)
+            // 구글 로그인/토큰 없으면 로컬만 저장
             return schedule;
         }
 
@@ -102,28 +107,24 @@ public class ScheduleService {
         String calendarId = "primary";
 
         try {
-            // 6. Issue 내용을 이용해서 구글 이벤트 생성
             String eventId = googleCalendarClient.createEvent(
                     accessToken,
                     calendarId,
                     schedule
             );
 
-            // 7. 구글 이벤트 ID를 스케줄에 저장 (연동 정보 기록)
             schedule.linkGoogle(calendarId, eventId);
 
         } catch (Exception e) {
-            // 구글 쪽만 실패하고 로컬은 남기고 싶으면 여기서 로깅만
             e.printStackTrace();
         }
 
         return schedule;
     }
 
-
     public OwnSchedule updateWithGoogleSync(Long scheduleId,
                                             ScheduleRequestDto dto,
-                                            @AuthenticationPrincipal OAuth2User principal) {
+                                            String userEmail) {
 
         OwnSchedule schedule = scheduleRepository.findById(scheduleId)
                 .orElseThrow(() -> new IllegalArgumentException("해당 스케줄을 찾을 수 없습니다. id=" + scheduleId));
@@ -150,19 +151,15 @@ public class ScheduleService {
             return schedule;
         }
 
-        // 4. 연동 하겠다고 했는데, 아예 연동된 적이 없는 일정이면? → 그냥 로컬만 수정
+        // 4. 연동 하겠다고 했는데, 아예 연동된 적이 없는 일정이면 → 로컬만 수정
         if (!schedule.isGoogleLinked() || schedule.getGoogleEventId() == null) {
             return schedule;
         }
 
-        // 5. principal 없으면 구글 수정 스킵
-        if (principal == null) {
-            // 로그만 남기고 구글은 건너뜀
-            return schedule;
-        }
-
+        // 5. JWT 기반이므로 OAuth2User 대신 userEmail로 AuthorizedClient 조회
         OAuth2AuthorizedClient client =
-                clientService.loadAuthorizedClient("google", principal.getName());
+                clientService.loadAuthorizedClient("google", userEmail);
+
         if (client == null || client.getAccessToken() == null) {
             return schedule;
         }
@@ -179,14 +176,12 @@ public class ScheduleService {
                 schedule
         );
 
-        // result 에 따라 로그 찍거나, NOT_FOUND 면 새로 만들지 여부 결정 가능
-
+        // result 에 따라 로그 처리 등 가능
         return schedule;
     }
 
-
     public ScheduleDeleteResponseDto deleteWithGoogleSync(Long scheduleId,
-                                                          OAuth2User principal) {
+                                                          String userEmail) {
 
         OwnSchedule schedule = scheduleRepository.findById(scheduleId)
                 .orElseThrow(() -> new IllegalArgumentException("해당 스케줄을 찾을 수 없습니다. id=" + scheduleId));
@@ -198,7 +193,7 @@ public class ScheduleService {
         if (googleLinked && schedule.getGoogleEventId() != null) {
 
             OAuth2AuthorizedClient client =
-                    clientService.loadAuthorizedClient("google", principal.getName());
+                    clientService.loadAuthorizedClient("google", userEmail);
 
             if (client != null && client.getAccessToken() != null) {
                 String accessToken = client.getAccessToken().getTokenValue();
@@ -212,7 +207,7 @@ public class ScheduleService {
                         schedule.getGoogleEventId()
                 );
             } else {
-                deleteResult = GoogleDeleteResult.ERROR; // 토큰 없음
+                deleteResult = GoogleDeleteResult.ERROR;
             }
         }
 
@@ -236,13 +231,12 @@ public class ScheduleService {
         return new ScheduleDeleteResponseDto(true, googleLinked, message);
     }
 
-
     private ScheduleResponseDto toResponse(OwnSchedule s) {
         return ScheduleResponseDto.builder()
                 .id(s.getId())
                 .userId(s.getUser().getId())
                 .userName(s.getUser().getName())
-                .issueId(s.getIssue().getId())
+                .issueId(s.getIssue() != null ? s.getIssue().getId() : null)
                 .priority(s.getPriority())
                 .schedulePurpose(s.getSchedulePurpose())
                 .scheduleContent(s.getScheduleContent())
@@ -252,7 +246,4 @@ public class ScheduleService {
                 .updatedAt(s.getUpdatedAt())
                 .build();
     }
-
-
 }
-

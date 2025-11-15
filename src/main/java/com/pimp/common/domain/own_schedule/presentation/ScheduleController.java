@@ -5,12 +5,13 @@ import com.pimp.common.domain.own_schedule.domain.model.OwnSchedule;
 import com.pimp.common.domain.own_schedule.dto.ScheduleRequestDto;
 import com.pimp.common.domain.own_schedule.dto.ScheduleResponseDto;
 import com.pimp.common.domain.own_schedule.dto.ScheduleDeleteResponseDto;
+import com.pimp.common.domain.user.domain.model.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.oauth2.core.user.OAuth2User;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @RestController
@@ -30,12 +31,35 @@ public class ScheduleController {
         return ResponseEntity.ok(scheduleService.findById(id));
     }
 
+    @GetMapping("/user/{id}")
+    public ResponseEntity<List<ScheduleResponseDto>> getUserSchedule(@PathVariable Long id) {
+        User instance = new User(id);
+        return ResponseEntity.ok(scheduleService.findByUser(instance));
+    }
+
+    @GetMapping("/user/{id}/{start}/{end}")
+    public ResponseEntity<List<ScheduleResponseDto>> getUserSchedulePeriod(
+            @PathVariable Long id,
+            @PathVariable String start,
+            @PathVariable String end
+    ) {
+        User instance = new User(id);
+        LocalDateTime startTime = LocalDateTime.parse(start);
+        LocalDateTime endTime = LocalDateTime.parse(end);
+        return ResponseEntity.ok(scheduleService.findByUserPeriod(
+                instance, startTime, endTime
+        ));
+    }
+
     @PostMapping
     public ResponseEntity<ScheduleResponseDto> createSchedule(
-            @AuthenticationPrincipal OAuth2User principal,
+            Authentication authentication,
             @RequestBody ScheduleRequestDto request
     ) {
-        OwnSchedule schedule = scheduleService.createWithGoogleSync(request, principal);
+        // JWT에서 꺼낸 사용자 식별 값 (email 또는 userId)
+        String userEmail = authentication.getName();
+
+        OwnSchedule schedule = scheduleService.createWithGoogleSync(request, userEmail);
         return ResponseEntity.ok(ScheduleResponseDto.from(schedule));
     }
 
@@ -43,16 +67,20 @@ public class ScheduleController {
     public ResponseEntity<ScheduleResponseDto> updateSchedule(
             @PathVariable Long id,
             @RequestBody ScheduleRequestDto dto,
-            @AuthenticationPrincipal OAuth2User principal
+            Authentication authentication
     ) {
-        OwnSchedule updated = scheduleService.updateWithGoogleSync(id, dto, principal);
+        String userEmail = authentication.getName();
+        OwnSchedule updated = scheduleService.updateWithGoogleSync(id, dto, userEmail);
         return ResponseEntity.ok(ScheduleResponseDto.from(updated));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<ScheduleDeleteResponseDto> deleteSchedule(@PathVariable Long id, @AuthenticationPrincipal OAuth2User principal) {
-        ScheduleDeleteResponseDto response = scheduleService.deleteWithGoogleSync(id, principal);
+    public ResponseEntity<ScheduleDeleteResponseDto> deleteSchedule(
+            @PathVariable Long id,
+            Authentication authentication
+    ) {
+        String userEmail = authentication.getName();
+        ScheduleDeleteResponseDto response = scheduleService.deleteWithGoogleSync(id, userEmail);
         return ResponseEntity.ok(response);
     }
 }
-

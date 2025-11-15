@@ -1,4 +1,4 @@
-package com.pimp.common.domain.own_schedule.domain.model;
+package com.pimp.google;
 
 public enum GoogleDeleteResult {
     SUCCESS,              // 정상 삭제됨

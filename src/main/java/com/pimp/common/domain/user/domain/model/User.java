@@ -28,4 +28,11 @@ public class User {
 
     @Column(name = "interlock_email", length = 200)
     private String interlockEmail;
+
+    public User(Long user) {
+        id = user;
+        name = "";
+        userId = "";
+        email = "";
+    }
 }
