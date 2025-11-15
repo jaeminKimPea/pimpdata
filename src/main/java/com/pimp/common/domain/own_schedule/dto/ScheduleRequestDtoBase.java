@@ -12,7 +12,6 @@ import java.time.LocalDateTime;
 @Getter
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
 public class ScheduleRequestDtoBase {
 
     @Schema(description = "사용자 ID", example = "1")
