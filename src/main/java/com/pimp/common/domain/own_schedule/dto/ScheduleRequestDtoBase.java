@@ -13,13 +13,10 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class ScheduleCreateRequestDto {
+public class ScheduleRequestDtoBase {
 
     @Schema(description = "사용자 ID", example = "1")
     private Long userId;
-
-    @Schema(description = "연결된 이슈 ID", example = "3")
-    private Long issueId;
 
     @Schema(description = "우선순위", example = "HIGH")
     private IssuePriority priority;
@@ -35,5 +32,7 @@ public class ScheduleCreateRequestDto {
 
     @Schema(description = "종료 시각", example = "2025-11-05T11:00:00")
     private LocalDateTime scheduleEnd;
-}
 
+    @Schema(description = "연동 여부", example = "false")
+    private Boolean syncWithGoogle;
+}

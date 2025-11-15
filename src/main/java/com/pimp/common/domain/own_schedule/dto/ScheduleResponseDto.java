@@ -1,6 +1,8 @@
 package com.pimp.common.domain.own_schedule.dto;
 
+import com.pimp.common.domain.issue.domain.model.Issue;
 import com.pimp.common.domain.issue.domain.model.IssuePriority;
+import com.pimp.common.domain.own_schedule.domain.model.OwnSchedule;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -47,5 +49,26 @@ public class ScheduleResponseDto {
 
     @Schema(description = "수정일시", example = "2025-11-03T09:10:00")
     private LocalDateTime updatedAt;
+
+    private boolean googleLinked;
+    private String googleEventId;
+
+    public static ScheduleResponseDto from(OwnSchedule schedule) {
+        Issue issue = schedule.getIssue();
+
+        return ScheduleResponseDto.builder()
+                .id(schedule.getId())
+                .schedulePurpose(schedule.getSchedulePurpose())
+                .scheduleContent(schedule.getScheduleContent())
+                .scheduleStart(schedule.getScheduleStart())
+                .scheduleEnd(schedule.getScheduleEnd())
+                .googleLinked(schedule.isGoogleLinked())
+                .googleEventId(schedule.getGoogleEventId())
+
+                // 이슈가 있을 경우 정보 추가
+                .issueId(issue != null ? issue.getId() : null)
+
+                .build();
+    }
 }
 

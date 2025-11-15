@@ -1,4 +1,4 @@
-package com.pimp.common.domain.google.presentation;
+package com.pimp.google;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;

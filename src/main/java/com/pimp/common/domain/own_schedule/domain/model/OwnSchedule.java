@@ -45,7 +45,7 @@ public class OwnSchedule {
     private LocalDateTime scheduleEnd;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "issue_id", nullable = false)
+    @JoinColumn(name = "issue_id")
     private Issue issue;
 
     @Column(name = "created_at", insertable = false, updatable = false)
@@ -53,5 +53,29 @@ public class OwnSchedule {
 
     @Column(name = "updated_at", insertable = false, updatable = false)
     private LocalDateTime updatedAt;
+
+    // ★ 구글 연동 여부
+    @Column(name = "google_linked")
+    private boolean googleLinked;
+
+    // ★ 연동된 캘린더 ID (보통 "primary")
+    @Column(name = "google_calendar_id", length = 100)
+    private String googleCalendarId;
+
+    // ★ 구글 이벤트 ID (연동 안 된 일정은 null)
+    @Column(name = "google_event_id", length = 200)
+    private String googleEventId;
+
+    public void linkGoogle(String calendarId, String eventId) {
+        this.googleLinked = true;
+        this.googleCalendarId = calendarId;
+        this.googleEventId = eventId;
+    }
+
+    public void unlinkGoogle() {
+        this.googleLinked = false;
+        this.googleCalendarId = null;
+        this.googleEventId = null;
+    }
 }
 
